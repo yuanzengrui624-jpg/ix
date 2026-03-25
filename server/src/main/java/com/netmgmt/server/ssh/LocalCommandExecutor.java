@@ -4,10 +4,12 @@ import com.netmgmt.server.config.Props;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.util.concurrent.TimeUnit;
 
 public final class LocalCommandExecutor {
+  private static final Charset GBK = Charset.forName("GBK");
+
   private final int commandTimeoutMs;
 
   public LocalCommandExecutor(Props props) {
@@ -17,13 +19,9 @@ public final class LocalCommandExecutor {
   public String execute(String command) {
     try {
       boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-      String[] cmd;
-      if (isWindows) {
-        String psScript = "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; " + command;
-        cmd = new String[]{"powershell", "-NoProfile", "-Command", psScript};
-      } else {
-        cmd = new String[]{"/bin/sh", "-c", command};
-      }
+      String[] cmd = isWindows
+          ? new String[]{"cmd.exe", "/c", command}
+          : new String[]{"/bin/sh", "-c", command};
 
       Process process = new ProcessBuilder(cmd)
           .redirectErrorStream(true)
@@ -55,7 +53,8 @@ public final class LocalCommandExecutor {
       }
       process.waitFor(1, TimeUnit.SECONDS);
 
-      return new String(baos.toByteArray(), StandardCharsets.UTF_8).trim();
+      Charset decodeCharset = isWindows ? GBK : Charset.defaultCharset();
+      return new String(baos.toByteArray(), decodeCharset).trim();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new IllegalStateException("本地命令执行被中断", e);
@@ -65,5 +64,4 @@ public final class LocalCommandExecutor {
       throw new IllegalStateException("本地命令执行失败: " + e.getMessage(), e);
     }
   }
-
 }
