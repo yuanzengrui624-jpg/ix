@@ -58,7 +58,7 @@ public final class SshMetricCollector {
 
     if (isLocal || !hasSshCredentials) {
       try {
-        return parseMetricOutput(localExecutor.execute(METRIC_PS_SCRIPT), currentCpu, currentMem, "本机");
+        return parseMetricOutput(localExecutor.execute(SSH_METRIC_COMMAND), currentCpu, currentMem, "本机");
       } catch (Exception e) {
         return new MetricSample(currentCpu, currentMem, false, "本机补采失败: " + e.getMessage());
       }
