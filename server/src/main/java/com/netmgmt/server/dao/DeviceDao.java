@@ -86,10 +86,28 @@ public final class DeviceDao {
   }
 
   public boolean delete(long id) throws SQLException {
-    try (Connection c = ds.getConnection();
-         PreparedStatement ps = c.prepareStatement("DELETE FROM device WHERE id = ?")) {
-      ps.setLong(1, id);
-      return ps.executeUpdate() > 0;
+    try (Connection c = ds.getConnection()) {
+      c.setAutoCommit(false);
+      try {
+        for (String table : new String[]{"monitor_log", "alarm", "config_backup"}) {
+          try (PreparedStatement ps = c.prepareStatement("DELETE FROM " + table + " WHERE device_id = ?")) {
+            ps.setLong(1, id);
+            ps.executeUpdate();
+          }
+        }
+        boolean deleted;
+        try (PreparedStatement ps = c.prepareStatement("DELETE FROM device WHERE id = ?")) {
+          ps.setLong(1, id);
+          deleted = ps.executeUpdate() > 0;
+        }
+        c.commit();
+        return deleted;
+      } catch (SQLException e) {
+        c.rollback();
+        throw e;
+      } finally {
+        c.setAutoCommit(true);
+      }
     }
   }
 
