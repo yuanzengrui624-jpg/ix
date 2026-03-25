@@ -13,13 +13,16 @@ import java.util.Set;
 public final class SshMetricCollector {
   private static final Logger log = LoggerFactory.getLogger(SshMetricCollector.class);
 
-  private static final String WINDOWS_METRIC_COMMAND =
-      "powershell -NoProfile -Command \"$cpu=(Get-CimInstance Win32_Processor | Measure-Object -Property "
+  private static final String METRIC_PS_SCRIPT =
+      "$cpu=(Get-CimInstance Win32_Processor | Measure-Object -Property "
           + "LoadPercentage -Average).Average; $os=Get-CimInstance Win32_OperatingSystem; "
           + "if($null -ne $cpu){ Write-Output ('CPU=' + [math]::Round([double]$cpu,2)) }; "
           + "if($null -ne $os -and $os.TotalVisibleMemorySize -gt 0){ "
           + "$mem=[math]::Round((($os.TotalVisibleMemorySize-$os.FreePhysicalMemory)*100.0)"
-          + "/$os.TotalVisibleMemorySize,2); Write-Output ('MEM=' + $mem) }\"";
+          + "/$os.TotalVisibleMemorySize,2); Write-Output ('MEM=' + $mem) }";
+
+  private static final String SSH_METRIC_COMMAND =
+      "powershell -NoProfile -Command \"" + METRIC_PS_SCRIPT + "\"";
 
   private static final Set<String> LOCAL_ADDRESSES = Set.of("127.0.0.1", "localhost", "::1");
 
@@ -47,7 +50,7 @@ public final class SshMetricCollector {
 
     if (hasSshCredentials && !isLocal) {
       try {
-        return parseMetricOutput(sshExecutor.execute(device, WINDOWS_METRIC_COMMAND), currentCpu, currentMem, "SSH");
+        return parseMetricOutput(sshExecutor.execute(device, SSH_METRIC_COMMAND), currentCpu, currentMem, "SSH");
       } catch (Exception e) {
         log.debug("SSH 补采失败，尝试本机执行: {}", e.getMessage());
       }
@@ -55,7 +58,7 @@ public final class SshMetricCollector {
 
     if (isLocal || !hasSshCredentials) {
       try {
-        return parseMetricOutput(localExecutor.execute(WINDOWS_METRIC_COMMAND), currentCpu, currentMem, "本机");
+        return parseMetricOutput(localExecutor.execute(METRIC_PS_SCRIPT), currentCpu, currentMem, "本机");
       } catch (Exception e) {
         return new MetricSample(currentCpu, currentMem, false, "本机补采失败: " + e.getMessage());
       }

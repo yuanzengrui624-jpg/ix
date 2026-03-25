@@ -4,25 +4,26 @@ import com.netmgmt.server.config.Props;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 public final class LocalCommandExecutor {
   private final int commandTimeoutMs;
-  private final Charset outputCharset;
 
   public LocalCommandExecutor(Props props) {
     this.commandTimeoutMs = props.getInt("ssh.commandTimeoutMs", 5000);
-    this.outputCharset = resolveCharset(props.getString("ssh.outputCharset", "GBK"));
   }
 
   public String execute(String command) {
     try {
       boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-      String[] cmd = isWindows
-          ? new String[]{"cmd.exe", "/c", command}
-          : new String[]{"/bin/sh", "-c", command};
+      String[] cmd;
+      if (isWindows) {
+        String psScript = "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; " + command;
+        cmd = new String[]{"powershell", "-NoProfile", "-Command", psScript};
+      } else {
+        cmd = new String[]{"/bin/sh", "-c", command};
+      }
 
       Process process = new ProcessBuilder(cmd)
           .redirectErrorStream(true)
@@ -54,7 +55,7 @@ public final class LocalCommandExecutor {
       }
       process.waitFor(1, TimeUnit.SECONDS);
 
-      return new String(baos.toByteArray(), outputCharset).trim();
+      return new String(baos.toByteArray(), StandardCharsets.UTF_8).trim();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new IllegalStateException("本地命令执行被中断", e);
@@ -65,12 +66,4 @@ public final class LocalCommandExecutor {
     }
   }
 
-  private static Charset resolveCharset(String charsetName) {
-    if (charsetName == null || charsetName.isBlank()) return StandardCharsets.UTF_8;
-    try {
-      return Charset.forName(charsetName.trim());
-    } catch (Exception ignored) {
-      return StandardCharsets.UTF_8;
-    }
-  }
 }
