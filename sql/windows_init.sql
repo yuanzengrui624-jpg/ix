@@ -1,5 +1,3 @@
--- MySQL 8+ schema for Net Device Management (C/S)
-
 CREATE DATABASE IF NOT EXISTS net_manage
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_0900_ai_ci;
@@ -61,8 +59,3 @@ CREATE TABLE IF NOT EXISTS config_backup (
   KEY idx_cb_device_time (device_id, backup_time),
   CONSTRAINT fk_cb_device FOREIGN KEY (device_id) REFERENCES device(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-ALTER TABLE alarm
-  ADD COLUMN IF NOT EXISTS recovered TINYINT NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS recover_time DATETIME NULL;
-

@@ -7,8 +7,12 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Line;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
@@ -19,6 +23,7 @@ public final class DevicePane extends VBox {
   private final ApiClient api;
   private final ObservableList<Device> rows = FXCollections.observableArrayList();
   private final TableView<Device> table = new TableView<>(rows);
+  private final Pane topologyPane = new Pane();
 
   public DevicePane(ServerConnector connector) {
     this.api = new ApiClient(connector);
@@ -30,9 +35,13 @@ public final class DevicePane extends VBox {
 
     buildTable();
     HBox actions = buildActions();
+    VBox topologyView = buildTopologyView();
+    SplitPane split = new SplitPane(table, topologyView);
+    split.setOrientation(javafx.geometry.Orientation.VERTICAL);
+    split.setDividerPositions(0.68);
 
-    getChildren().addAll(tip, actions, table);
-    VBox.setVgrow(table, Priority.ALWAYS);
+    getChildren().addAll(tip, actions, split);
+    VBox.setVgrow(split, Priority.ALWAYS);
 
     refreshAsync();
   }
@@ -43,6 +52,7 @@ public final class DevicePane extends VBox {
         List<Device> list = api.listDevices();
         Platform.runLater(() -> {
           rows.setAll(list);
+          redrawTopology();
         });
       } catch (Exception e) {
         Platform.runLater(() -> UiUtil.error("加载设备失败", e.getMessage()));
@@ -53,7 +63,14 @@ public final class DevicePane extends VBox {
   private HBox buildActions() {
     Button refresh = new Button("刷新");
     refresh.getStyleClass().add("primary");
-    refresh.setOnAction(e -> refreshAsync());
+    refresh.setOnAction(e -> {
+      refresh.setText("刷新中...");
+      refresh.setDisable(true);
+      refreshAsync();
+      new Thread(() -> { try { Thread.sleep(500); } catch (Exception ignored) {}
+        Platform.runLater(() -> { refresh.setText("刷新"); refresh.setDisable(false); });
+      }).start();
+    });
 
     Button add = new Button("添加设备");
     add.getStyleClass().add("primary");
@@ -86,21 +103,48 @@ public final class DevicePane extends VBox {
     Region spacer = new Region();
     HBox.setHgrow(spacer, Priority.ALWAYS);
 
-    Button runOnce = new Button("立即采集一次(Ping)");
-    runOnce.setOnAction(e -> new Thread(() -> {
-      try {
-        api.runMonitorOnce();
-      } catch (Exception ex) {
-        Platform.runLater(() -> UiUtil.error("触发采集失败", ex.getMessage()));
-      }
-    }, "monitor-run-once").start());
+    Button runOnce = new Button("立即采集一次");
+    runOnce.getStyleClass().add("success");
+    runOnce.setOnAction(e -> {
+      runOnce.setText("采集中...");
+      runOnce.setDisable(true);
+      new Thread(() -> {
+        try {
+          api.runMonitorOnce();
+          Thread.sleep(500);
+          Platform.runLater(() -> {
+            runOnce.setText("立即采集一次");
+            runOnce.setDisable(false);
+            refreshAsync();
+          });
+        } catch (Exception ex) {
+          Platform.runLater(() -> {
+            UiUtil.error("触发采集失败", ex.getMessage());
+            runOnce.setText("立即采集一次");
+            runOnce.setDisable(false);
+          });
+        }
+      }, "monitor-run-once").start();
+    });
 
     HBox box = new HBox(10, refresh, add, edit, del, spacer, runOnce);
     return box;
   }
 
   private void buildTable() {
-    table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+    table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+
+    TableColumn<Device, String> idx = new TableColumn<>("序号");
+    idx.setCellFactory(col -> new TableCell<>() {
+      @Override
+      protected void updateItem(String item, boolean empty) {
+        super.updateItem(item, empty);
+        setText(empty ? null : String.valueOf(getIndex() + 1));
+      }
+    });
+    idx.setPrefWidth(50);
+    idx.setMaxWidth(60);
+    idx.setSortable(false);
 
     TableColumn<Device, String> ip = new TableColumn<>("IP");
     ip.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().ip()));
@@ -113,12 +157,127 @@ public final class DevicePane extends VBox {
 
     TableColumn<Device, String> status = new TableColumn<>("状态");
     status.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(statusText(c.getValue().status())));
+    status.setCellFactory(col -> new TableCell<>() {
+      @Override
+      protected void updateItem(String item, boolean empty) {
+        super.updateItem(item, empty);
+        if (empty || item == null) { setText(null); setGraphic(null); return; }
+        Label badge = new Label(item);
+        badge.getStyleClass().add("在线".equals(item) ? "chip-ok" : "chip-bad");
+        setGraphic(badge);
+        setText(null);
+      }
+    });
 
     TableColumn<Device, String> last = new TableColumn<>("最后更新时间");
     last.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
         c.getValue().lastUpdate() == null ? "" : c.getValue().lastUpdate().toString()));
 
-    table.getColumns().addAll(ip, type, community, status, last);
+    table.getColumns().setAll(java.util.List.of(idx, ip, type, community, status, last));
+  }
+
+  private VBox buildTopologyView() {
+    Label topoTitle = new Label("拓扑简图");
+    topoTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #94a3b8;");
+
+    topologyPane.setPrefHeight(240);
+    topologyPane.setMinHeight(220);
+    topologyPane.setStyle("-fx-background-color: #1e293b; -fx-border-color: #334155; "
+        + "-fx-border-radius: 10; -fx-background-radius: 10;");
+    topologyPane.widthProperty().addListener((obs, oldVal, newVal) -> redrawTopology());
+    topologyPane.heightProperty().addListener((obs, oldVal, newVal) -> redrawTopology());
+
+    VBox box = new VBox(6, topoTitle, topologyPane);
+    VBox.setVgrow(topologyPane, Priority.ALWAYS);
+    return box;
+  }
+
+  private void redrawTopology() {
+    topologyPane.getChildren().clear();
+
+    double width = topologyPane.getWidth() > 100 ? topologyPane.getWidth() : 900;
+    double height = topologyPane.getHeight() > 100 ? topologyPane.getHeight() : 240;
+    if (rows.isEmpty()) {
+      Label empty = new Label("暂无设备，添加设备后这里会显示简单拓扑。");
+      empty.getStyleClass().add("muted");
+      empty.setLayoutX(width / 2 - 120);
+      empty.setLayoutY(height / 2 - 10);
+      topologyPane.getChildren().add(empty);
+      return;
+    }
+
+    double centerX = width / 2;
+    double coreWidth = 140;
+    double coreHeight = 46;
+    VBox coreNode = createTopologyNode("监控中心", "Socket / SNMP", "#2d4a6f", "#3b82f6", "#dbeafe");
+    coreNode.setPrefSize(coreWidth, coreHeight);
+    coreNode.setLayoutX(centerX - coreWidth / 2);
+    coreNode.setLayoutY(18);
+    topologyPane.getChildren().add(coreNode);
+
+    int shown = Math.min(rows.size(), 8);
+    int columns = Math.min(4, Math.max(1, shown));
+    int rowCount = (int) Math.ceil((double) shown / columns);
+    double startY = 102;
+    double rowGap = rowCount > 1 ? 74 : 0;
+    double usableWidth = width - 120;
+    double xGap = columns == 1 ? 0 : usableWidth / (columns - 1);
+
+    for (int i = 0; i < shown; i++) {
+      Device device = rows.get(i);
+      int row = i / columns;
+      int col = i % columns;
+
+      double nodeWidth = 120;
+      double nodeHeight = 48;
+      double x = 60 + col * xGap - nodeWidth / 2;
+      double y = startY + row * rowGap;
+
+      String border = switch (device.status()) {
+        case 1 -> "#22c55e";
+        case 2 -> "#ef4444";
+        default -> "#64748b";
+      };
+      String bg = switch (device.status()) {
+        case 1 -> "#123a29";
+        case 2 -> "#4b1d1d";
+        default -> "#334155";
+      };
+      String subtitle = device.type() + " · " + statusText(device.status());
+
+      Line line = new Line(centerX, 64, x + nodeWidth / 2, y);
+      line.setStroke(Color.web("#475569"));
+      line.setStrokeWidth(1.4);
+      topologyPane.getChildren().add(line);
+
+      VBox node = createTopologyNode(device.ip(), subtitle, bg, border, "#e2e8f0");
+      node.setPrefSize(nodeWidth, nodeHeight);
+      node.setLayoutX(x);
+      node.setLayoutY(y);
+      topologyPane.getChildren().add(node);
+    }
+
+    if (rows.size() > shown) {
+      Label more = new Label("其余 " + (rows.size() - shown) + " 台设备已省略显示");
+      more.getStyleClass().add("muted");
+      more.setLayoutX(16);
+      more.setLayoutY(height - 24);
+      topologyPane.getChildren().add(more);
+    }
+  }
+
+  private static VBox createTopologyNode(String title, String subtitle, String bg, String border, String titleColor) {
+    Label titleLabel = new Label(title);
+    titleLabel.setStyle("-fx-text-fill: " + titleColor + "; -fx-font-size: 12px; -fx-font-weight: 700;");
+
+    Label subLabel = new Label(subtitle);
+    subLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px;");
+
+    VBox box = new VBox(2, titleLabel, subLabel);
+    box.setAlignment(Pos.CENTER);
+    box.setStyle("-fx-background-color: " + bg + "; -fx-border-color: " + border + "; "
+        + "-fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 6 10;");
+    return box;
   }
 
   private void openEditDialog(Device existing) {

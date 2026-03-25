@@ -21,7 +21,7 @@ public final class ServerMain {
 
     int port = props.getInt("server.port");
     log.info("Starting server on port {}", port);
-    new DeviceManagementServer(ds, monitorScheduler).start(port);
+    new DeviceManagementServer(ds, monitorScheduler, props).start(port);
   }
 }
 

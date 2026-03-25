@@ -15,11 +15,30 @@ public final class MainView extends BorderPane {
 
     setTop(buildHeader());
 
+    DashboardPane dashboard = new DashboardPane(connector);
+    DevicePane devices = new DevicePane(connector);
+    AlarmPane alarms = new AlarmPane(connector);
+    MonitorPane monitor = new MonitorPane(connector);
+    ConfigBackupPane configBackup = new ConfigBackupPane(connector);
+
     TabPane tabs = new TabPane();
     tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-    tabs.getTabs().add(new Tab("设备管理", new DevicePane(connector)));
-    tabs.getTabs().add(new Tab("告警中心", new AlarmPane(connector)));
-    tabs.getTabs().add(new Tab("监控日志", new MonitorPane(connector)));
+    tabs.getTabs().add(new Tab("系统概览", dashboard));
+    tabs.getTabs().add(new Tab("设备管理", devices));
+    tabs.getTabs().add(new Tab("告警中心", alarms));
+    tabs.getTabs().add(new Tab("监控日志", monitor));
+    tabs.getTabs().add(new Tab("配置备份", configBackup));
+
+    tabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+      if (newTab == null) return;
+      var content = newTab.getContent();
+      if (content instanceof DashboardPane p) p.refresh();
+      else if (content instanceof DevicePane p) p.refreshAsync();
+      else if (content instanceof AlarmPane p) p.refresh();
+      else if (content instanceof MonitorPane p) p.reloadDevices();
+      else if (content instanceof ConfigBackupPane p) p.refresh();
+    });
+
     setCenter(tabs);
 
     BorderPane.setMargin(tabs, new Insets(12, 12, 12, 12));

@@ -7,6 +7,7 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public final class DeviceDao {
@@ -100,6 +101,23 @@ public final class DeviceDao {
       ps.setTimestamp(2, Timestamp.valueOf(lastUpdate));
       ps.setLong(3, id);
       ps.executeUpdate();
+    }
+  }
+
+  public Map<String, Integer> countByStatus() throws SQLException {
+    String sql = "SELECT status, COUNT(*) AS cnt FROM device GROUP BY status";
+    try (Connection c = ds.getConnection();
+         PreparedStatement ps = c.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+      int total = 0, online = 0, offline = 0;
+      while (rs.next()) {
+        int s = rs.getInt("status");
+        int cnt = rs.getInt("cnt");
+        total += cnt;
+        if (s == 1) online = cnt;
+        else if (s == 2) offline = cnt;
+      }
+      return Map.of("total", total, "online", online, "offline", offline, "unknown", total - online - offline);
     }
   }
 

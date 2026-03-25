@@ -9,6 +9,8 @@ public record Alarm(
     String content,
     LocalDateTime createTime,
     boolean acknowledged,
-    LocalDateTime ackTime
+    LocalDateTime ackTime,
+    boolean recovered,
+    LocalDateTime recoverTime
 ) {}
 

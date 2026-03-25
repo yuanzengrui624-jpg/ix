@@ -3,7 +3,9 @@ package com.netmgmt.server.socket;
 import com.netmgmt.common.json.Json;
 import com.netmgmt.common.protocol.ApiRequest;
 import com.netmgmt.common.protocol.ApiResponse;
+import com.netmgmt.server.config.Props;
 import com.netmgmt.server.dao.AlarmDao;
+import com.netmgmt.server.dao.ConfigBackupDao;
 import com.netmgmt.server.dao.DeviceDao;
 import com.netmgmt.server.dao.MonitorLogDao;
 import com.netmgmt.server.monitor.MonitorScheduler;
@@ -14,7 +16,6 @@ import javax.sql.DataSource;
 import java.io.*;
 import java.net.Socket;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 final class ClientHandler implements Runnable {
@@ -24,13 +25,15 @@ final class ClientHandler implements Runnable {
   private final DeviceDao deviceDao;
   private final AlarmDao alarmDao;
   private final MonitorLogDao monitorLogDao;
+  private final ConfigBackupDao configBackupDao;
   private final MonitorScheduler monitorScheduler;
 
-  ClientHandler(Socket socket, DataSource ds, MonitorScheduler monitorScheduler) {
+  ClientHandler(Socket socket, DataSource ds, MonitorScheduler monitorScheduler, Props props) {
     this.socket = socket;
     this.deviceDao = new DeviceDao(ds);
     this.alarmDao = new AlarmDao(ds);
     this.monitorLogDao = new MonitorLogDao(ds);
+    this.configBackupDao = new ConfigBackupDao(ds, deviceDao, props);
     this.monitorScheduler = monitorScheduler;
   }
 
@@ -107,6 +110,25 @@ final class ClientHandler implements Runnable {
           monitorScheduler.runOnceNowAsync();
           yield ApiResponse.ok(id, Map.of("scheduled", true));
         }
+
+        case "STATS" -> {
+          var deviceStats = deviceDao.countByStatus();
+          int unackedAlarms = alarmDao.countUnacked();
+          var alarmTrend = alarmDao.alarmTrend7Days();
+          yield ApiResponse.ok(id, Map.of(
+              "deviceTotal", deviceStats.get("total"),
+              "deviceOnline", deviceStats.get("online"),
+              "deviceOffline", deviceStats.get("offline"),
+              "unackedAlarms", unackedAlarms,
+              "alarmTrend", alarmTrend
+          ));
+        }
+
+        case "CONFIG_BACKUP_LIST" -> ApiResponse.ok(id, configBackupDao.listRecent(intOr(data, "limit", 500)));
+        case "CONFIG_BACKUP_DEVICE" -> ApiResponse.ok(id, Map.of("id", configBackupDao.backupDevice(lng(data, "deviceId"))));
+        case "CONFIG_BACKUP_ALL" -> ApiResponse.ok(id, Map.of("count", configBackupDao.backupAll()));
+        case "CONFIG_BACKUP_GET" -> ApiResponse.ok(id, configBackupDao.getById(lng(data, "id")));
+        case "CONFIG_BACKUP_RESTORE" -> ApiResponse.ok(id, configBackupDao.restoreBackup(lng(data, "id")));
 
         default -> ApiResponse.fail(id, "Unknown action: " + action);
       };

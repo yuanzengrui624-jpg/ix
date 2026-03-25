@@ -1,5 +1,6 @@
 package com.netmgmt.server.socket;
 
+import com.netmgmt.server.config.Props;
 import com.netmgmt.server.monitor.MonitorScheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,15 +17,17 @@ public final class DeviceManagementServer {
 
   private final DataSource ds;
   private final MonitorScheduler monitorScheduler;
+  private final Props props;
   private final ExecutorService pool = Executors.newCachedThreadPool(r -> {
     Thread t = new Thread(r, "client-handler");
     t.setDaemon(true);
     return t;
   });
 
-  public DeviceManagementServer(DataSource ds, MonitorScheduler monitorScheduler) {
+  public DeviceManagementServer(DataSource ds, MonitorScheduler monitorScheduler, Props props) {
     this.ds = ds;
     this.monitorScheduler = monitorScheduler;
+    this.props = props;
   }
 
   public void start(int port) throws IOException {
@@ -33,7 +36,7 @@ public final class DeviceManagementServer {
       while (true) {
         Socket socket = serverSocket.accept();
         log.info("Client connected: {}", socket.getRemoteSocketAddress());
-        pool.submit(new ClientHandler(socket, ds, monitorScheduler));
+        pool.submit(new ClientHandler(socket, ds, monitorScheduler, props));
       }
     }
   }

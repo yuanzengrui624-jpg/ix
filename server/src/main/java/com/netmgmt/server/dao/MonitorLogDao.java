@@ -76,16 +76,30 @@ public final class MonitorLogDao {
     }
   }
 
+  public int deleteOlderThan(int days) throws SQLException {
+    String sql = "DELETE FROM monitor_log WHERE collect_time < DATE_SUB(NOW(), INTERVAL ? DAY)";
+    try (Connection c = ds.getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setInt(1, days);
+      return ps.executeUpdate();
+    }
+  }
+
   private static MonitorLog map(ResultSet rs) throws SQLException {
     return new MonitorLog(
         rs.getLong("id"),
         rs.getLong("device_id"),
-        (Double) rs.getObject("cpu"),
-        (Double) rs.getObject("mem"),
+        toDouble(rs, "cpu"),
+        toDouble(rs, "mem"),
         rs.getInt("ping_status"),
         rs.getString("interface_status"),
         rs.getTimestamp("collect_time").toLocalDateTime()
     );
+  }
+
+  private static Double toDouble(ResultSet rs, String col) throws SQLException {
+    double v = rs.getDouble(col);
+    return rs.wasNull() ? null : v;
   }
 }
 
