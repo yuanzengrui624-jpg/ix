@@ -149,8 +149,21 @@ public final class MonitorScheduler {
           : new SshMetricCollector.MetricSample(cpu, mem, false, null);
       cpu = sshMetrics.cpu();
       mem = sshMetrics.mem();
+      LocalHostMetricCollector.Snapshot localSnapshot = ok && isLocalAddress(d.ip())
+          ? LocalHostMetricCollector.collect(cpu, mem, ifJson)
+          : new LocalHostMetricCollector.Snapshot(cpu, mem, ifJson, false, null);
+      cpu = localSnapshot.cpu();
+      mem = localSnapshot.mem();
+      ifJson = localSnapshot.interfaceJson();
 
       monitorLogDao.insert(d.id(), cpu, mem, ok ? 1 : 0, ifJson, now);
+
+      if (isDemoLoopbackDevice(d.ip())) {
+        alarmDao.recoverByDevice(d.id(), "OFFLINE");
+        alarmDao.recoverByDevice(d.id(), "CPU_HIGH");
+        alarmDao.recoverByDevice(d.id(), "MEM_HIGH");
+        return;
+      }
 
       if (!ok) {
         if (!alarmDao.hasRecentUnacked(d.id(), "OFFLINE", dedupMinutes)) {
@@ -193,9 +206,25 @@ public final class MonitorScheduler {
           && (cpu == null || mem == null)) {
         log.info("设备 {} 补采 Windows CPU/内存失败: {}", d.ip(), sshMetrics.message());
       }
+
+      if (localSnapshot.filled() && localSnapshot.message() != null && !localSnapshot.message().isBlank()) {
+        log.info("设备 {} {}", d.ip(), localSnapshot.message());
+      }
     } catch (Exception e) {
       log.warn("设备 {} 采集失败", d.ip(), e);
     }
+  }
+
+  private static boolean isLocalAddress(String ip) {
+    if (ip == null) return false;
+    String normalized = ip.trim().toLowerCase();
+    return normalized.equals("localhost") || normalized.equals("::1") || normalized.startsWith("127.");
+  }
+
+  private static boolean isDemoLoopbackDevice(String ip) {
+    if (ip == null) return false;
+    String normalized = ip.trim().toLowerCase();
+    return normalized.startsWith("127.") && !"127.0.0.1".equals(normalized);
   }
 }
 

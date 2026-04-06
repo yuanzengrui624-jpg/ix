@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.Set;
 
 public final class SshMetricCollector {
   private static final Logger log = LoggerFactory.getLogger(SshMetricCollector.class);
@@ -23,8 +22,6 @@ public final class SshMetricCollector {
 
   private static final String SSH_METRIC_COMMAND =
       "powershell -NoProfile -Command \"" + METRIC_PS_SCRIPT + "\"";
-
-  private static final Set<String> LOCAL_ADDRESSES = Set.of("127.0.0.1", "localhost", "::1");
 
   private final boolean enabled;
   private final SshCommandExecutor sshExecutor;
@@ -92,7 +89,8 @@ public final class SshMetricCollector {
 
   private static boolean isLocalAddress(String ip) {
     if (ip == null) return false;
-    return LOCAL_ADDRESSES.contains(ip.trim().toLowerCase());
+    String normalized = ip.trim().toLowerCase();
+    return normalized.equals("localhost") || normalized.equals("::1") || normalized.startsWith("127.");
   }
 
   private static Double parsePercent(String text) {

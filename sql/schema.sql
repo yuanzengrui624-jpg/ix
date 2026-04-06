@@ -62,9 +62,31 @@ CREATE TABLE IF NOT EXISTS config_backup (
   CONSTRAINT fk_cb_device FOREIGN KEY (device_id) REFERENCES device(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-ALTER TABLE alarm
-  ADD COLUMN IF NOT EXISTS recovered TINYINT NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS recover_time DATETIME NULL;
+SET @has_recovered := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = 'net_manage' AND TABLE_NAME = 'alarm' AND COLUMN_NAME = 'recovered'
+);
+SET @sql_recovered := IF(
+  @has_recovered = 0,
+  'ALTER TABLE alarm ADD COLUMN recovered TINYINT NOT NULL DEFAULT 0',
+  'SELECT 1'
+);
+PREPARE stmt_recovered FROM @sql_recovered;
+EXECUTE stmt_recovered;
+DEALLOCATE PREPARE stmt_recovered;
+
+SET @has_recover_time := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = 'net_manage' AND TABLE_NAME = 'alarm' AND COLUMN_NAME = 'recover_time'
+);
+SET @sql_recover_time := IF(
+  @has_recover_time = 0,
+  'ALTER TABLE alarm ADD COLUMN recover_time DATETIME NULL',
+  'SELECT 1'
+);
+PREPARE stmt_recover_time FROM @sql_recover_time;
+EXECUTE stmt_recover_time;
+DEALLOCATE PREPARE stmt_recover_time;
 
 -- 演示设备种子数据：使用 127.0.0.x 回环地址，方便本机演示时直接看到多台设备
 -- INSERT IGNORE 不会覆盖用户已有的真实设备配置

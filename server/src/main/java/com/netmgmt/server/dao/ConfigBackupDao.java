@@ -15,11 +15,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 public final class ConfigBackupDao {
   private static final Logger log = LoggerFactory.getLogger(ConfigBackupDao.class);
-  private static final Set<String> LOCAL_ADDRESSES = Set.of("127.0.0.1", "localhost", "::1");
 
   private final DataSource ds;
   private final DeviceDao deviceDao;
@@ -145,7 +142,8 @@ public final class ConfigBackupDao {
 
   private static boolean isLocalAddress(String ip) {
     if (ip == null) return false;
-    return LOCAL_ADDRESSES.contains(ip.trim().toLowerCase());
+    String normalized = ip.trim().toLowerCase();
+    return normalized.equals("localhost") || normalized.equals("::1") || normalized.startsWith("127.");
   }
 
   private static ConfigBackup map(ResultSet rs) throws SQLException {
