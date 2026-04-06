@@ -66,3 +66,12 @@ ALTER TABLE alarm
   ADD COLUMN IF NOT EXISTS recovered TINYINT NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS recover_time DATETIME NULL;
 
+-- 演示设备种子数据：使用 127.0.0.x 回环地址，方便本机演示时直接看到多台设备
+-- INSERT IGNORE 不会覆盖用户已有的真实设备配置
+INSERT IGNORE INTO device (ip, type, community, ssh_user, ssh_pwd, status, last_update) VALUES
+  ('127.0.0.2', 'router',   'public', NULL, NULL, 1, NOW()),
+  ('127.0.0.3', 'switch',   'public', NULL, NULL, 1, NOW()),
+  ('127.0.0.4', 'firewall', 'public', NULL, NULL, 1, NOW()),
+  ('127.0.0.5', 'ap',       'public', NULL, NULL, 1, NOW()),
+  ('127.0.0.6', 'server',   'public', NULL, NULL, 1, NOW());
+

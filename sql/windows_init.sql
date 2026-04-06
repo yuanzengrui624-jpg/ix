@@ -59,3 +59,12 @@ CREATE TABLE IF NOT EXISTS config_backup (
   KEY idx_cb_device_time (device_id, backup_time),
   CONSTRAINT fk_cb_device FOREIGN KEY (device_id) REFERENCES device(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 演示设备种子数据：使用 127.0.0.x 回环地址，方便 Windows 本机启动后看到更丰富的设备列表
+-- INSERT IGNORE 不会覆盖已有真实设备
+INSERT IGNORE INTO device (ip, type, community, ssh_user, ssh_pwd, status, last_update) VALUES
+  ('127.0.0.2', 'router',   'public', NULL, NULL, 1, NOW()),
+  ('127.0.0.3', 'switch',   'public', NULL, NULL, 1, NOW()),
+  ('127.0.0.4', 'firewall', 'public', NULL, NULL, 1, NOW()),
+  ('127.0.0.5', 'ap',       'public', NULL, NULL, 1, NOW()),
+  ('127.0.0.6', 'server',   'public', NULL, NULL, 1, NOW());

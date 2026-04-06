@@ -32,6 +32,8 @@ public final class ConfigBackupPane extends VBox {
   private final Label pageInfo = new Label("第 1 页 / 共 1 页");
   private final Button prevBtn = new Button("上一页");
   private final Button nextBtn = new Button("下一页");
+  private final boolean autoOpenDiff = Boolean.getBoolean("netmgmt.demoDiff");
+  private boolean diffShown;
 
   private final ComboBox<Device> deviceBox = new ComboBox<>();
 
@@ -51,11 +53,11 @@ public final class ConfigBackupPane extends VBox {
     configArea.setWrapText(true);
     configArea.setPrefHeight(200);
     configArea.setPromptText("点击左侧表格中的备份记录，此处显示配置内容...");
-    configArea.setStyle("-fx-font-family: 'Consolas', 'Courier New', monospace; -fx-font-size: 12px; "
-        + "-fx-control-inner-background: #253347; -fx-text-fill: #e2e8f0;");
+    configArea.setStyle("-fx-font-family: 'Consolas', 'Courier New', monospace; -fx-font-size: 14px; "
+        + "-fx-control-inner-background: #ffffff; -fx-text-fill: #000000; -fx-border-color: #111111;");
 
     Label configTitle = new Label("配置内容");
-    configTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #94a3b8;");
+    configTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111111;");
 
     SplitPane split = new SplitPane(new VBox(table, pager), new VBox(6, configTitle, configArea));
     split.setOrientation(javafx.geometry.Orientation.VERTICAL);
@@ -229,31 +231,31 @@ public final class ConfigBackupPane extends VBox {
 
       Label ll = new Label(l.isEmpty() ? " " : l);
       ll.setMaxWidth(Double.MAX_VALUE);
-      ll.setStyle("-fx-font-family: 'Consolas','Courier New',monospace; -fx-font-size: 12px; -fx-padding: 1 6; "
-          + (same ? "-fx-text-fill: #cbd5e1; -fx-background-color: #1e293b;"
-                  : "-fx-text-fill: white; -fx-background-color: #7f1d1d;"));
+      ll.setStyle("-fx-font-family: 'Consolas','Courier New',monospace; -fx-font-size: 13px; -fx-padding: 2 6; "
+          + (same ? "-fx-text-fill: #111111; -fx-background-color: #ffffff;"
+                  : "-fx-text-fill: #000000; -fx-background-color: #fee2e2;"));
 
       Label rl = new Label(r.isEmpty() ? " " : r);
       rl.setMaxWidth(Double.MAX_VALUE);
-      rl.setStyle("-fx-font-family: 'Consolas','Courier New',monospace; -fx-font-size: 12px; -fx-padding: 1 6; "
-          + (same ? "-fx-text-fill: #cbd5e1; -fx-background-color: #1e293b;"
-                  : "-fx-text-fill: white; -fx-background-color: #14532d;"));
+      rl.setStyle("-fx-font-family: 'Consolas','Courier New',monospace; -fx-font-size: 13px; -fx-padding: 2 6; "
+          + (same ? "-fx-text-fill: #111111; -fx-background-color: #ffffff;"
+                  : "-fx-text-fill: #000000; -fx-background-color: #dcfce7;"));
 
       leftCol.getChildren().add(ll);
       rightCol.getChildren().add(rl);
     }
 
     Label lTitle = new Label(titleLeft);
-    lTitle.setStyle("-fx-font-weight: 700; -fx-text-fill: #e2e8f0; -fx-padding: 6;");
+    lTitle.setStyle("-fx-font-weight: 700; -fx-font-size: 14px; -fx-text-fill: #111111; -fx-padding: 6;");
     Label rTitle = new Label(titleRight);
-    rTitle.setStyle("-fx-font-weight: 700; -fx-text-fill: #e2e8f0; -fx-padding: 6;");
+    rTitle.setStyle("-fx-font-weight: 700; -fx-font-size: 14px; -fx-text-fill: #111111; -fx-padding: 6;");
 
     ScrollPane lScroll = new ScrollPane(leftCol);
     lScroll.setFitToWidth(true);
-    lScroll.setStyle("-fx-background: #1e293b; -fx-background-color: #1e293b;");
+    lScroll.setStyle("-fx-background: #ffffff; -fx-background-color: #ffffff; -fx-border-color: #d1d5db;");
     ScrollPane rScroll = new ScrollPane(rightCol);
     rScroll.setFitToWidth(true);
-    rScroll.setStyle("-fx-background: #1e293b; -fx-background-color: #1e293b;");
+    rScroll.setStyle("-fx-background: #ffffff; -fx-background-color: #ffffff; -fx-border-color: #d1d5db;");
 
     lScroll.vvalueProperty().bindBidirectional(rScroll.vvalueProperty());
 
@@ -265,13 +267,13 @@ public final class ConfigBackupPane extends VBox {
     HBox.setHgrow(left, Priority.ALWAYS);
     HBox.setHgrow(right, Priority.ALWAYS);
 
-    Label legend = new Label("红色 = 左侧内容（有差异）    绿色 = 右侧内容（有差异）    无色 = 两侧相同");
-    legend.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-padding: 4 8;");
+    Label legend = new Label("红色 = 左侧内容（有差异）    绿色 = 右侧内容（有差异）    无底色 = 两侧相同");
+    legend.setStyle("-fx-text-fill: #374151; -fx-font-size: 13px; -fx-padding: 6 8;");
 
     HBox diffPane = new HBox(4, left, right);
     VBox root = new VBox(diffPane, legend);
     VBox.setVgrow(diffPane, Priority.ALWAYS);
-    root.setStyle("-fx-background-color: #1a2332; -fx-padding: 8;");
+    root.setStyle("-fx-background-color: #ffffff; -fx-padding: 8;");
 
     stage.setScene(new javafx.scene.Scene(root));
     stage.show();
@@ -348,11 +350,28 @@ public final class ConfigBackupPane extends VBox {
           allData = list;
           currentPage = 0;
           showPage();
+          if (!pageRows.isEmpty() && table.getSelectionModel().getSelectedItem() == null) {
+            table.getSelectionModel().select(0);
+          }
+          if (autoOpenDiff && !diffShown && list.size() >= 2) {
+            diffShown = true;
+            openDiffSnapshot(list.get(0), list.get(1));
+          }
         });
       } catch (Exception e) {
         Platform.runLater(() -> UiUtil.error("加载备份记录失败", e.getMessage()));
       }
     }, "config-backup-refresh").start();
+  }
+
+  private void openDiffSnapshot(ConfigBackup left, ConfigBackup right) {
+    String ip1 = deviceIpMap.getOrDefault(left.deviceId(), String.valueOf(left.deviceId()));
+    String ip2 = deviceIpMap.getOrDefault(right.deviceId(), String.valueOf(right.deviceId()));
+    String time1 = left.backupTime() == null ? "" : left.backupTime().toString();
+    String time2 = right.backupTime() == null ? "" : right.backupTime().toString();
+    String t1 = left.content() == null ? "" : left.content();
+    String t2 = right.content() == null ? "" : right.content();
+    showDiffWindow(ip1 + " @ " + time1, t1, ip2 + " @ " + time2, t2);
   }
 
   private void loadConfigContent(long backupId) {

@@ -15,14 +15,20 @@ import javafx.stage.StageStyle;
 public final class NetMgmtApp extends Application {
   @Override
   public void start(Stage stage) throws Exception {
-    ServerConnector connector = showConnectDialog(stage);
+    ServerConnector resolvedConnector = tryAutoConnect();
+    if (resolvedConnector == null) {
+      resolvedConnector = showConnectDialog(stage);
+    }
+    final ServerConnector connector = resolvedConnector;
     if (connector == null) {
       Platform.exit();
       return;
     }
 
     MainView root = new MainView(connector);
-    Scene scene = new Scene(root, 1100, 720);
+    double width = readDoubleProperty("netmgmt.width", 1100);
+    double height = readDoubleProperty("netmgmt.height", 720);
+    Scene scene = new Scene(root, width, height);
     scene.getStylesheets().add(getClass().getClassLoader().getResource("styles/app.css").toExternalForm());
 
     stage.setTitle("网络设备管理系统");
@@ -34,9 +40,35 @@ public final class NetMgmtApp extends Application {
     });
   }
 
-  private ServerConnector showConnectDialog(Stage owner) {
-    String css = getClass().getClassLoader().getResource("styles/app.css").toExternalForm();
+  private ServerConnector tryAutoConnect() {
+    String host = firstNonBlank(System.getProperty("netmgmt.host"), System.getenv("NETMGMT_HOST"));
+    String portText = firstNonBlank(System.getProperty("netmgmt.port"), System.getenv("NETMGMT_PORT"));
+    if (host == null || portText == null) return null;
+    try {
+      int port = Integer.parseInt(portText.trim());
+      return new ServerConnector(host.trim(), port);
+    } catch (Exception ignored) {
+      return null;
+    }
+  }
 
+  private static String firstNonBlank(String a, String b) {
+    if (a != null && !a.isBlank()) return a;
+    if (b != null && !b.isBlank()) return b;
+    return null;
+  }
+
+  private static double readDoubleProperty(String key, double defaultValue) {
+    String raw = System.getProperty(key);
+    if (raw == null || raw.isBlank()) return defaultValue;
+    try {
+      return Double.parseDouble(raw.trim());
+    } catch (NumberFormatException ignored) {
+      return defaultValue;
+    }
+  }
+
+  private ServerConnector showConnectDialog(Stage owner) {
     while (true) {
       Stage dlgStage = new Stage();
       dlgStage.initStyle(StageStyle.UNDECORATED);
@@ -139,12 +171,15 @@ public final class NetMgmtApp extends Application {
         statusLabel.setManaged(false);
 
         new Thread(() -> {
+          ServerConnector conn = null;
           try {
-            ServerConnector conn = new ServerConnector(host, port);
+            conn = new ServerConnector(host, port);
+            ServerConnector finalConn = conn;
             Platform.runLater(() -> {
-              result[0] = conn;
+              result[0] = finalConn;
               dlgStage.close();
             });
+            conn = null;
           } catch (Exception ex) {
             Platform.runLater(() -> {
               statusLabel.setText("连接失败: " + ex.getMessage());
@@ -153,6 +188,10 @@ public final class NetMgmtApp extends Application {
               connectBtn.setText("重新连接");
               connectBtn.setDisable(false);
             });
+          } finally {
+            if (conn != null) {
+              try { conn.close(); } catch (Exception ignored) {}
+            }
           }
         }, "connect-thread").start();
       });

@@ -36,16 +36,16 @@ public final class UiUtil {
     stage.initStyle(StageStyle.TRANSPARENT);
 
     Label iconLabel = new Label(icon);
-    iconLabel.setStyle("-fx-font-size: 26px; -fx-text-fill: " + accentColor + ";");
+    iconLabel.setStyle("-fx-font-size: 28px; -fx-text-fill: " + accentColor + ";");
     iconLabel.setMinWidth(44);
     iconLabel.setAlignment(Pos.CENTER);
 
     Label headerLabel = new Label(header);
-    headerLabel.setStyle("-fx-text-fill: #334155; -fx-font-size: 15px; -fx-font-weight: 700;");
+    headerLabel.setStyle("-fx-text-fill: #000000; -fx-font-size: 16px; -fx-font-weight: 700;");
     headerLabel.setWrapText(true);
 
     Label contentLabel = new Label(content);
-    contentLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12px;");
+    contentLabel.setStyle("-fx-text-fill: #111111; -fx-font-size: 14px;");
     contentLabel.setWrapText(true);
     contentLabel.setMaxWidth(280);
 
@@ -59,17 +59,18 @@ public final class UiUtil {
     final boolean[] result = {false};
 
     Button okBtn = new Button("确  定");
-    okBtn.setStyle("-fx-background-color: " + accentColor + "; -fx-text-fill: white; "
-        + "-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 7 26; "
+    okBtn.setStyle("-fx-background-color: #ffffff; -fx-text-fill: #000000; "
+        + "-fx-font-size: 14px; -fx-font-weight: 700; -fx-padding: 8 26; "
+        + "-fx-border-color: " + accentColor + "; -fx-border-width: 1.5; "
         + "-fx-background-radius: 8; -fx-cursor: hand;");
     okBtn.setOnAction(e -> { result[0] = true; stage.close(); });
 
     HBox btnBox;
     if (showCancel) {
       Button cancelBtn = new Button("取  消");
-      cancelBtn.setStyle("-fx-background-color: #e2e8f0; -fx-text-fill: #64748b; "
-          + "-fx-font-size: 12px; -fx-font-weight: 600; -fx-padding: 7 26; "
-          + "-fx-background-radius: 8; -fx-border-color: #cbd5e1; -fx-border-radius: 8; -fx-cursor: hand;");
+      cancelBtn.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #000000; "
+          + "-fx-font-size: 14px; -fx-font-weight: 700; -fx-padding: 8 26; "
+          + "-fx-background-radius: 8; -fx-border-color: #9ca3af; -fx-border-radius: 8; -fx-cursor: hand;");
       cancelBtn.setOnAction(e -> { result[0] = false; stage.close(); });
       btnBox = new HBox(10, cancelBtn, okBtn);
     } else {
@@ -83,7 +84,7 @@ public final class UiUtil {
     topBar.setMinHeight(6);
 
     VBox root = new VBox(topBar, top, btnBox);
-    root.setStyle("-fx-background-color: #f1f5f9; -fx-border-color: #cbd5e1; "
+    root.setStyle("-fx-background-color: #ffffff; -fx-border-color: #d1d5db; "
         + "-fx-border-radius: 12; -fx-background-radius: 12; -fx-border-width: 1; "
         + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 4);");
     root.setPrefWidth(380);

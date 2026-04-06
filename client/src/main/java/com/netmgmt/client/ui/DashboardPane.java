@@ -1,6 +1,5 @@
 package com.netmgmt.client.ui;
 
-import javafx.collections.FXCollections;
 import com.netmgmt.client.net.ApiClient;
 import com.netmgmt.client.net.ServerConnector;
 import javafx.application.Platform;
@@ -95,14 +94,14 @@ public final class DashboardPane extends VBox {
 
   private VBox buildCard(String title, Label valueLabel, String color) {
     Label titleLbl = new Label(title);
-    titleLbl.setStyle("-fx-text-fill: #9ca3af; -fx-font-size: 12px;");
+    titleLbl.setStyle("-fx-text-fill: #374151; -fx-font-size: 14px; -fx-font-weight: 700;");
 
     valueLabel.setStyle("-fx-text-fill: " + color + "; -fx-font-size: 28px; -fx-font-weight: 700;");
 
-    VBox card = new VBox(4, titleLbl, valueLabel);
+    VBox card = new VBox(6, titleLbl, valueLabel);
     card.setAlignment(Pos.CENTER);
     card.setPadding(new Insets(16, 32, 16, 32));
-    card.setStyle("-fx-background-color: #253347; -fx-border-color: #334155; "
+    card.setStyle("-fx-background-color: #ffffff; -fx-border-color: #d1d5db; "
         + "-fx-background-radius: 12; -fx-border-radius: 12;");
     HBox.setHgrow(card, Priority.ALWAYS);
     return card;

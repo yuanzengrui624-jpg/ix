@@ -172,7 +172,7 @@ public final class AlarmPane extends VBox {
         super.updateItem(item, empty);
         if (empty || item == null) { setText(null); setGraphic(null); return; }
         Label lbl = new Label(item);
-        lbl.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: 600;");
+        lbl.setStyle("-fx-text-fill: #b45309; -fx-font-size: 14px; -fx-font-weight: 700;");
         setGraphic(lbl);
         setText(null);
       }

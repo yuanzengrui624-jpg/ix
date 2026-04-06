@@ -12,7 +12,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.chart.CategoryAxis;
 import javafx.scene.chart.LineChart;
-import javafx.scene.layout.Region;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
@@ -27,7 +26,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public final class MonitorPane extends VBox {
   private final ApiClient api;
@@ -42,6 +40,7 @@ public final class MonitorPane extends VBox {
   private final NumberAxis chartYAxis = new NumberAxis();
   private final LineChart<String, Number> lineChart = new LineChart<>(chartXAxis, chartYAxis);
   private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+  private final boolean autoLoadSnapshot = Boolean.getBoolean("netmgmt.monitorAutoLoad");
 
   private List<MonitorLog> allData = new ArrayList<>();
   private static final int PAGE_SIZE = 20;
@@ -63,7 +62,7 @@ public final class MonitorPane extends VBox {
     GridPane filterGrid = buildFilterGrid();
 
     Label tableTitle = new Label("采集记录");
-    tableTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #94a3b8;");
+    tableTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111111;");
 
     HBox pager = buildPager();
 
@@ -84,7 +83,7 @@ public final class MonitorPane extends VBox {
     grid.setAlignment(Pos.CENTER_LEFT);
 
     Label lbl1 = new Label("选择设备");
-    lbl1.setStyle("-fx-font-weight: 700; -fx-text-fill: #cbd5e1;");
+    lbl1.setStyle("-fx-font-weight: 700; -fx-font-size: 14px; -fx-text-fill: #111111;");
     lbl1.setMinWidth(70);
 
     deviceBox.setPrefWidth(260);
@@ -108,7 +107,7 @@ public final class MonitorPane extends VBox {
     latest.setOnAction(e -> loadLatestAsync());
 
     Label lbl2 = new Label("选择日期");
-    lbl2.setStyle("-fx-font-weight: 700; -fx-text-fill: #cbd5e1;");
+    lbl2.setStyle("-fx-font-weight: 700; -fx-font-size: 14px; -fx-text-fill: #111111;");
     lbl2.setMinWidth(70);
 
     setupDatePicker(startDate);
@@ -170,7 +169,7 @@ public final class MonitorPane extends VBox {
   }
 
   private void buildTable() {
-    table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+    table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
     TableColumn<MonitorLog, String> idx = new TableColumn<>("序号");
     idx.setCellFactory(col -> new TableCell<>() {
@@ -220,14 +219,14 @@ public final class MonitorPane extends VBox {
         if (empty || item == null || item.equals("-")) { setText(item); setGraphic(null); return; }
         Label lbl = new Label(item);
         lbl.setStyle(item.contains("DOWN")
-            ? "-fx-text-fill: #f59e0b; -fx-font-size: 11px;"
-            : "-fx-text-fill: #22c55e; -fx-font-size: 11px;");
+            ? "-fx-text-fill: #b45309; -fx-font-size: 13px; -fx-font-weight: 700;"
+            : "-fx-text-fill: #15803d; -fx-font-size: 13px; -fx-font-weight: 700;");
         setGraphic(lbl);
         setText(null);
       }
     });
 
-    table.getColumns().addAll(idx, time, ping, cpu, mem, iface);
+    table.getColumns().setAll(java.util.List.of(idx, time, ping, cpu, mem, iface));
   }
 
   private void buildChart() {
@@ -258,7 +257,7 @@ public final class MonitorPane extends VBox {
       if (m.mem() != null) memSeries.getData().add(new XYChart.Data<>(label, m.mem()));
     }
 
-    lineChart.getData().addAll(cpuSeries, memSeries);
+    lineChart.getData().setAll(java.util.List.of(cpuSeries, memSeries));
 
     Platform.runLater(() -> {
       for (Node legendItem : lineChart.lookupAll(".chart-legend-item")) {
@@ -294,7 +293,12 @@ public final class MonitorPane extends VBox {
         List<Device> list = api.listDevices();
         Platform.runLater(() -> {
           deviceBox.getItems().setAll(list);
-          if (!list.isEmpty()) deviceBox.getSelectionModel().select(0);
+          if (!list.isEmpty()) {
+            deviceBox.getSelectionModel().select(0);
+            if (autoLoadSnapshot) {
+              loadLatestAsync();
+            }
+          }
         });
       } catch (Exception e) {
         Platform.runLater(() -> UiUtil.error("加载设备失败", e.getMessage()));

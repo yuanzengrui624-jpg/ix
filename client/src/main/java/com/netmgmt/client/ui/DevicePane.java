@@ -163,7 +163,11 @@ public final class DevicePane extends VBox {
         super.updateItem(item, empty);
         if (empty || item == null) { setText(null); setGraphic(null); return; }
         Label badge = new Label(item);
-        badge.getStyleClass().add("在线".equals(item) ? "chip-ok" : "chip-bad");
+        badge.getStyleClass().add(switch (item) {
+          case "在线" -> "chip-ok";
+          case "离线" -> "chip-bad";
+          default -> "chip-muted";
+        });
         setGraphic(badge);
         setText(null);
       }
@@ -178,11 +182,11 @@ public final class DevicePane extends VBox {
 
   private VBox buildTopologyView() {
     Label topoTitle = new Label("拓扑简图");
-    topoTitle.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: #94a3b8;");
+    topoTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111111;");
 
     topologyPane.setPrefHeight(240);
     topologyPane.setMinHeight(220);
-    topologyPane.setStyle("-fx-background-color: #1e293b; -fx-border-color: #334155; "
+    topologyPane.setStyle("-fx-background-color: #ffffff; -fx-border-color: #d1d5db; "
         + "-fx-border-radius: 10; -fx-background-radius: 10;");
     topologyPane.widthProperty().addListener((obs, oldVal, newVal) -> redrawTopology());
     topologyPane.heightProperty().addListener((obs, oldVal, newVal) -> redrawTopology());
@@ -209,7 +213,7 @@ public final class DevicePane extends VBox {
     double centerX = width / 2;
     double coreWidth = 140;
     double coreHeight = 46;
-    VBox coreNode = createTopologyNode("监控中心", "Socket / SNMP", "#2d4a6f", "#3b82f6", "#dbeafe");
+    VBox coreNode = createTopologyNode("监控中心", "Socket / SNMP", "#eff6ff", "#1d4ed8", "#000000");
     coreNode.setPrefSize(coreWidth, coreHeight);
     coreNode.setLayoutX(centerX - coreWidth / 2);
     coreNode.setLayoutY(18);
@@ -234,23 +238,23 @@ public final class DevicePane extends VBox {
       double y = startY + row * rowGap;
 
       String border = switch (device.status()) {
-        case 1 -> "#22c55e";
-        case 2 -> "#ef4444";
-        default -> "#64748b";
+        case 1 -> "#16a34a";
+        case 2 -> "#dc2626";
+        default -> "#6b7280";
       };
       String bg = switch (device.status()) {
-        case 1 -> "#123a29";
-        case 2 -> "#4b1d1d";
-        default -> "#334155";
+        case 1 -> "#f0fdf4";
+        case 2 -> "#fef2f2";
+        default -> "#f3f4f6";
       };
       String subtitle = device.type() + " · " + statusText(device.status());
 
       Line line = new Line(centerX, 64, x + nodeWidth / 2, y);
-      line.setStroke(Color.web("#475569"));
+      line.setStroke(Color.web("#9ca3af"));
       line.setStrokeWidth(1.4);
       topologyPane.getChildren().add(line);
 
-      VBox node = createTopologyNode(device.ip(), subtitle, bg, border, "#e2e8f0");
+      VBox node = createTopologyNode(device.ip(), subtitle, bg, border, "#000000");
       node.setPrefSize(nodeWidth, nodeHeight);
       node.setLayoutX(x);
       node.setLayoutY(y);
@@ -268,10 +272,10 @@ public final class DevicePane extends VBox {
 
   private static VBox createTopologyNode(String title, String subtitle, String bg, String border, String titleColor) {
     Label titleLabel = new Label(title);
-    titleLabel.setStyle("-fx-text-fill: " + titleColor + "; -fx-font-size: 12px; -fx-font-weight: 700;");
+    titleLabel.setStyle("-fx-text-fill: " + titleColor + "; -fx-font-size: 13px; -fx-font-weight: 700;");
 
     Label subLabel = new Label(subtitle);
-    subLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px;");
+    subLabel.setStyle("-fx-text-fill: #4b5563; -fx-font-size: 11px;");
 
     VBox box = new VBox(2, titleLabel, subLabel);
     box.setAlignment(Pos.CENTER);

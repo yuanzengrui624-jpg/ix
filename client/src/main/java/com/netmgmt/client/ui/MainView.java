@@ -1,6 +1,7 @@
 package com.netmgmt.client.ui;
 
 import com.netmgmt.client.net.ServerConnector;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
@@ -39,6 +40,8 @@ public final class MainView extends BorderPane {
       else if (content instanceof ConfigBackupPane p) p.refresh();
     });
 
+    applyInitialTabSelection(tabs);
+
     setCenter(tabs);
 
     BorderPane.setMargin(tabs, new Insets(12, 12, 12, 12));
@@ -48,13 +51,30 @@ public final class MainView extends BorderPane {
     Label title = new Label("网络设备管理系统");
     title.getStyleClass().add("title");
 
-    Label subtitle = new Label("Java 17 · MySQL · C/S Socket · 专业蓝灰主题");
+    Label subtitle = new Label("Java 17 · MySQL · C/S Socket · 高对比浅色界面");
     subtitle.getStyleClass().addAll("subtitle", "muted");
 
     VBox box = new VBox(2, title, subtitle);
     HBox wrap = new HBox(box);
     wrap.getStyleClass().add("header");
     return new VBox(wrap);
+  }
+
+  private static void applyInitialTabSelection(TabPane tabs) {
+    String raw = System.getProperty("netmgmt.startTab", "").trim().toLowerCase();
+    if (raw.isEmpty()) return;
+
+    int index = switch (raw) {
+      case "0", "dashboard", "overview", "系统概览" -> 0;
+      case "1", "devices", "device", "设备管理" -> 1;
+      case "2", "alarms", "alarm", "告警中心" -> 2;
+      case "3", "monitor", "监控日志" -> 3;
+      case "4", "config", "backup", "配置备份" -> 4;
+      default -> -1;
+    };
+    if (index >= 0 && index < tabs.getTabs().size()) {
+      Platform.runLater(() -> tabs.getSelectionModel().select(index));
+    }
   }
 }
 
